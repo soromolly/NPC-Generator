@@ -1,0 +1,319 @@
+/* ============================================================
+   NPC Generator — стили
+   ============================================================ */
+
+.npc-gen-container {
+    grid-column: auto;
+    margin-bottom: 10px;
+}
+
+/* ---------- Заголовок / сворачивание ---------- */
+
+.npc-gen-drawer-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--input-bg, #1e1e2a);
+    border: 1px solid var(--input-border, #334155);
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 14px;
+    transition: background 0.15s;
+}
+
+.npc-gen-drawer-toggle.open {
+    border-radius: 10px 10px 0 0;
+}
+
+.npc-gen-title {
+    color: #a78bfa;
+    font-weight: 600;
+}
+
+.npc-gen-arrow {
+    opacity: 0.6;
+    font-size: 12px;
+}
+
+/* ---------- Разворачиваемая область ---------- */
+
+.npc-gen-content {
+    display: none;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--input-border, #334155);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    padding: 14px;
+    box-sizing: border-box;
+}
+
+.npc-gen-content.open {
+    display: block;
+}
+
+/* ---------- Верхняя строка: вкл / язык ---------- */
+
+.npc-gen-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.npc-gen-enable-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+.npc-gen-checkbox {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.npc-gen-checkbox-sm {
+    width: 12px;
+    height: 12px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.npc-gen-lang-select {
+    background: var(--input-bg, #0f172a);
+    border: 1px solid var(--input-border, #334155);
+    color: #a78bfa;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* ---------- Основное тело ---------- */
+
+.npc-gen-body {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.npc-gen-body.disabled {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+/* ---------- Строка "Сеттинг" ---------- */
+
+.npc-gen-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.npc-gen-row-label {
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+.npc-gen-select {
+    background: var(--input-bg, #0f172a);
+    border: 1px solid var(--input-border, #334155);
+    color: var(--text-color, #f8fafc);
+    padding: 6px 10px;
+    border-radius: 6px;
+    width: 55%;
+}
+
+/* ---------- Библиотека (details) ---------- */
+
+.npc-gen-library {
+    margin-bottom: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.npc-gen-library-summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #a78bfa;
+    font-size: 0.9em;
+}
+
+.npc-gen-library-inner {
+    margin-top: 10px;
+}
+
+/* ---------- Дерево категорий ---------- */
+
+.npc-gen-category {
+    margin-bottom: 6px;
+}
+
+.npc-gen-cat-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.npc-gen-cat-label.required {
+    cursor: default;
+}
+
+.npc-gen-cat-name {
+    font-weight: 600;
+    color: #a78bfa;
+}
+
+.npc-gen-cat-required {
+    font-size: 0.75em;
+    opacity: 0.5;
+}
+
+.npc-gen-slots {
+    margin-left: 22px;
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.npc-gen-slot-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.88em;
+    opacity: 0.85;
+    cursor: pointer;
+}
+
+/* ---------- Кнопки ---------- */
+
+.npc-gen-generate-btn {
+    width: 100%;
+    background: #7c3aed;
+    color: white;
+    font-weight: 700;
+    padding: 8px 0;
+    justify-content: center;
+    margin-bottom: 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.npc-gen-generate-btn:hover {
+    background: #6d28d9;
+}
+
+.npc-gen-copy-btn {
+    width: 100%;
+    margin-top: 6px;
+    font-size: 0.85em;
+}
+
+.npc-gen-clear-btn {
+    width: 100%;
+    font-size: 0.9em;
+}
+
+/* ---------- Список NPC ---------- */
+
+.npc-gen-list-section {
+    margin-bottom: 12px;
+}
+
+.npc-gen-list-title {
+    font-weight: 600;
+    font-size: 0.9em;
+    color: #a78bfa;
+    margin-bottom: 6px;
+}
+
+.npc-gen-list {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.npc-gen-empty {
+    opacity: 0.55;
+    font-style: italic;
+    padding: 6px 0;
+}
+
+.npc-gen-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.npc-gen-item-label {
+    flex: 1;
+    font-size: 0.88em;
+}
+
+.npc-gen-delete-btn {
+    padding: 2px 6px;
+    font-size: 11px;
+    height: 22px;
+    background: rgba(220, 38, 38, 0.25);
+    border: 1px solid rgba(220, 38, 38, 0.5);
+    border-radius: 4px;
+    color: #fca5a5;
+    cursor: pointer;
+}
+
+.npc-gen-delete-btn:hover {
+    background: rgba(220, 38, 38, 0.4);
+}
+
+/* ---------- Чекбокс инъекции ---------- */
+
+.npc-gen-inject-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+/* ---------- Превью инъекции ---------- */
+
+.npc-gen-preview-section {
+    margin-bottom: 12px;
+}
+
+.npc-gen-preview-title {
+    font-weight: 600;
+    font-size: 0.9em;
+    color: #a78bfa;
+    margin-bottom: 6px;
+}
+
+.npc-gen-preview {
+    width: 100%;
+    min-height: 100px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    font-size: 0.82em;
+    padding: 8px;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: monospace;
+    resize: vertical;
+}
