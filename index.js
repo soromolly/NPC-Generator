@@ -10,7 +10,6 @@ const EXTENSION_NAME = 'npc-generator';
 
 const DEFAULT_SETTINGS = {
     isEnabled: true,
-    language: 'ru',
     setting: 'universal',
     injectToPrompt: false,
     chatNpcData: {}
@@ -18,6 +17,38 @@ const DEFAULT_SETTINGS = {
 
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 let isMenuCollapsed = true;
+
+// ------------------------------------------------------------
+// Лейблы для инъекции (короткие, английские, для экономии токенов)
+// ------------------------------------------------------------
+
+const INJECT_LABELS = {
+    name_given: 'name',
+    name_family: 'surname',
+    age_descriptor: 'age',
+    role: 'role',
+    body_build: 'build',
+    face_feature: 'face',
+    hair: 'hair',
+    eyes: 'eyes',
+    clothing: 'clothing',
+    distinguishing_mark: 'mark',
+    voice_timbre: 'voice',
+    voice_manner: 'speech',
+    posture: 'posture',
+    gesture: 'gesture',
+    gaze: 'gaze',
+    temperament: 'temperament',
+    motivation: 'motivation',
+    quirk: 'quirk',
+    origin: 'origin',
+    key_event: 'past',
+    hidden_goal: 'secret'
+};
+
+function getInjectLabel(slotId) {
+    return INJECT_LABELS[slotId] || slotId;
+}
 
 // ------------------------------------------------------------
 // Данные чата
@@ -35,8 +66,7 @@ function createDefaultChatData() {
         npcs: [],
         overrides: {
             disabledCategories: [],
-            disabledSlots: [],
-            excludedValues: {}
+            disabledSlots: []
         }
     };
 }
@@ -51,7 +81,6 @@ function getChatData() {
     if (!data.overrides) data.overrides = createDefaultChatData().overrides;
     if (!data.overrides.disabledCategories) data.overrides.disabledCategories = [];
     if (!data.overrides.disabledSlots) data.overrides.disabledSlots = [];
-    if (!data.overrides.excludedValues) data.overrides.excludedValues = {};
     return data;
 }
 
@@ -69,10 +98,10 @@ function isSlotEnabled(slot, chatData) {
 }
 
 function matchesSetting(value, setting) {
-    if (!value.tags || value.tags.length === 0) return true;
-    if (value.tags.includes('universal')) return true;
-    if (setting === 'universal') return value.tags.includes('universal');
-    return value.tags.includes(setting);
+    const tags = value.tags || [];
+    if (tags.length === 0) return true;
+    if (setting === 'universal') return true;
+    return tags.includes(setting);
 }
 
 function pickRandom(arr) {
@@ -124,29 +153,30 @@ function valueToText(val, lang) {
     return val?.[lang] || val?.ru || '';
 }
 
-function buildNpcLine(npc, lang) {
+function buildNpcLine(npc) {
     const parts = [];
     for (const slot of NPC_LIBRARY) {
         const val = npc.fields[slot.id];
         if (!val) continue;
-        const text = valueToText(val, lang);
-        if (text) parts.push(text);
+        const text = valueToText(val, 'en');
+        if (!text) continue;
+        parts.push(`${getInjectLabel(slot.id)}: ${text}`);
     }
     return parts.join('; ');
 }
 
-function buildNpcLabel(npc, lang) {
-    const name = valueToText(npc.fields.name_given, lang);
-    const role = valueToText(npc.fields.role, lang);
+function buildNpcLabel(npc) {
+    const name = valueToText(npc.fields.name_given, 'ru');
+    const role = valueToText(npc.fields.role, 'ru');
     if (name && role) return `${name} — ${role}`;
     return name || role || 'NPC';
 }
 
-function buildInjectionText(chatData, lang) {
+function buildInjectionText(chatData) {
     const active = chatData.npcs.filter(n => n.inPrompt);
     if (!active.length) return '';
-    const lines = active.map(npc => `• ${buildNpcLine(npc, lang)}`);
-    return `[NPC в сцене]\n${lines.join('\n')}`;
+    const lines = active.map(npc => `• ${buildNpcLine(npc)}`);
+    return `[NPC in scene]\n${lines.join('\n')}`;
 }
 
 // ------------------------------------------------------------
@@ -159,7 +189,7 @@ function updatePrompt() {
         return;
     }
     const chatData = getChatData();
-    const text = buildInjectionText(chatData, settings.language || 'ru');
+    const text = buildInjectionText(chatData);
     setExtensionPrompt(EXTENSION_NAME, text, extension_prompt_types.IN_CHAT, 0);
 }
 
@@ -179,7 +209,7 @@ function escapeHtml(s) {
     }[c]));
 }
 
-function renderCategoryTree(chatData, lang) {
+function renderCategoryTree(chatData) {
     const grouped = getSlotsByCategory();
     let html = '';
 
@@ -196,7 +226,7 @@ function renderCategoryTree(chatData, lang) {
             <div class="npc-gen-category">
                 <label class="${labelClass}">
                     <input type="checkbox" class="npc-gen-checkbox-sm npc-cat-cb" data-cat="${catId}" ${catChecked ? 'checked' : ''} ${requiredAttr}>
-                    <span class="npc-gen-cat-name">${escapeHtml(cat.label[lang] || cat.label.ru)}</span>
+                    <span class="npc-gen-cat-name">${escapeHtml(cat.label.ru)}</span>
                     ${cat.required ? '<span class="npc-gen-cat-required">(обязательно)</span>' : ''}
                 </label>
                 <div class="npc-gen-slots">
@@ -205,7 +235,7 @@ function renderCategoryTree(chatData, lang) {
                         return `
                             <label class="npc-gen-slot-label">
                                 <input type="checkbox" class="npc-gen-checkbox-sm npc-slot-cb" data-slot="${slot.id}" ${(!slotDisabled) ? 'checked' : ''}>
-                                <span>${escapeHtml(slot.label[lang] || slot.label.ru)}</span>
+                                <span>${escapeHtml(slot.label.ru)}</span>
                             </label>
                         `;
                     }).join('')}
@@ -216,23 +246,22 @@ function renderCategoryTree(chatData, lang) {
     return html;
 }
 
-function renderNpcList(chatData, lang) {
+function renderNpcList(chatData) {
     if (!chatData.npcs.length) {
         return `<div class="npc-gen-empty">NPC пока не сгенерированы.</div>`;
     }
     return chatData.npcs.map(npc => `
         <div class="npc-gen-item">
             <input type="checkbox" class="npc-gen-checkbox-sm npc-inprompt-cb" data-id="${npc.id}" ${npc.inPrompt ? 'checked' : ''}>
-            <div class="npc-gen-item-label">${escapeHtml(buildNpcLabel(npc, lang))}</div>
+            <div class="npc-gen-item-label">${escapeHtml(buildNpcLabel(npc))}</div>
             <button class="npc-gen-delete-btn npc-delete-btn" data-id="${npc.id}">×</button>
         </div>
     `).join('');
 }
 
 function renderUI() {
-    const lang = settings.language || 'ru';
     const chatData = getChatData();
-    const previewText = buildInjectionText(chatData, lang) || '(инъекция пуста)';
+    const previewText = buildInjectionText(chatData) || '(injection is empty)';
 
     const html = `
         <div class="npc-gen-drawer-toggle${isMenuCollapsed ? '' : ' open'}">
@@ -247,10 +276,6 @@ function renderUI() {
                     <input type="checkbox" class="npc-gen-checkbox" id="npc-gen-enabled" ${settings.isEnabled ? 'checked' : ''}>
                     Включить расширение
                 </label>
-                <select class="npc-gen-lang-select" id="npc-gen-lang">
-                    <option value="ru" ${settings.language === 'ru' ? 'selected' : ''}>RU</option>
-                    <option value="en" ${settings.language === 'en' ? 'selected' : ''}>EN</option>
-                </select>
             </div>
 
             <div class="npc-gen-body${settings.isEnabled ? '' : ' disabled'}">
@@ -263,15 +288,13 @@ function renderUI() {
                         <option value="modern" ${settings.setting === 'modern' ? 'selected' : ''}>Современность</option>
                         <option value="cyberpunk" ${settings.setting === 'cyberpunk' ? 'selected' : ''}>Киберпанк</option>
                         <option value="space" ${settings.setting === 'space' ? 'selected' : ''}>Космос</option>
-                        <option value="omegaverse" ${settings.setting === 'omegaverse' ? 'selected' : ''}>Омегаверс</option>
-                        <option value="oviposition" ${settings.setting === 'oviposition' ? 'selected' : ''}>Яйцекладка</option>
                     </select>
                 </div>
 
                 <details class="npc-gen-library">
                     <summary class="npc-gen-library-summary">📚 Настройка библиотеки</summary>
                     <div class="npc-gen-library-inner">
-                        ${renderCategoryTree(chatData, lang)}
+                        ${renderCategoryTree(chatData)}
                     </div>
                 </details>
 
@@ -280,7 +303,7 @@ function renderUI() {
                 <div class="npc-gen-list-section">
                     <div class="npc-gen-list-title">Сгенерированные NPC (${chatData.npcs.length})</div>
                     <div class="npc-gen-list">
-                        ${renderNpcList(chatData, lang)}
+                        ${renderNpcList(chatData)}
                     </div>
                 </div>
 
@@ -290,7 +313,7 @@ function renderUI() {
                 </label>
 
                 <div class="npc-gen-preview-section">
-                    <div class="npc-gen-preview-title">Превью инъекции</div>
+                    <div class="npc-gen-preview-title">Превью инъекции (то, что уходит модели)</div>
                     <textarea readonly class="npc-gen-preview">${escapeHtml(previewText)}</textarea>
                     <button id="npc-gen-copy" class="menu_button npc-gen-copy-btn">📋 Скопировать превью</button>
                 </div>
@@ -327,13 +350,6 @@ function bindUiEvents() {
         saveSettingsDebounced();
         updatePrompt();
         renderUI();
-    });
-
-    $(document).off('change', '#npc-gen-lang').on('change', '#npc-gen-lang', function() {
-        settings.language = $(this).val();
-        saveSettingsDebounced();
-        renderUI();
-        updatePrompt();
     });
 
     $(document).off('change', '#npc-gen-setting').on('change', '#npc-gen-setting', function() {
@@ -407,7 +423,7 @@ function bindUiEvents() {
 
     $(document).off('click', '#npc-gen-copy').on('click', '#npc-gen-copy', function() {
         const chatData = getChatData();
-        const text = buildInjectionText(chatData, settings.language || 'ru');
+        const text = buildInjectionText(chatData);
         navigator.clipboard.writeText(text).then(() => {
             notify('Превью скопировано в буфер обмена', 'success');
         }).catch(() => {
@@ -435,7 +451,6 @@ function loadSettings() {
     }
     settings = extension_settings[EXTENSION_NAME];
     if (settings.isEnabled === undefined) settings.isEnabled = true;
-    if (settings.language === undefined) settings.language = 'ru';
     if (settings.setting === undefined) settings.setting = 'universal';
     if (settings.injectToPrompt === undefined) settings.injectToPrompt = false;
     if (!settings.chatNpcData) settings.chatNpcData = {};
