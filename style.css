@@ -20,7 +20,7 @@
     cursor: pointer;
     user-select: none;
     font-size: 14px;
-    transition: background 0.15s;
+    transition: background 0.15s, border-radius 0.15s;
 }
 
 .npc-gen-drawer-toggle.open {
@@ -41,16 +41,21 @@
 
 .npc-gen-content {
     display: none;
+    max-height: 0;
+    overflow: hidden;
     background: rgba(0, 0, 0, 0.15);
     border: 1px solid var(--input-border, #334155);
     border-top: none;
     border-radius: 0 0 10px 10px;
-    padding: 14px;
+    padding: 0 14px;
     box-sizing: border-box;
+    transition: max-height 0.25s ease, padding 0.25s ease;
 }
 
 .npc-gen-content.open {
     display: block;
+    max-height: 2000px;
+    padding: 14px;
 }
 
 /* ---------- Верхняя строка: вкл / язык ---------- */
@@ -208,6 +213,7 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
+    font-size: 0.95em;
 }
 
 .npc-gen-generate-btn:hover {
