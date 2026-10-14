@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS = {
     chatNpcData: {},
     openCategories: [],
     openSlots: [],
+    openGroups: [],
     openNpcs: []
 };
 
@@ -25,6 +26,7 @@ let isMenuCollapsed = true;
 let isReady = false;
 
 const INJECT_LABELS = {
+    gender: 'gender',
     name_given: 'name',
     name_family: 'surname',
     age_descriptor: 'age',
@@ -77,6 +79,7 @@ function createDefaultChatData() {
         overrides: {
             disabledCategories: getDefaultDisabledCategories(),
             disabledSlots: [],
+            disabledGroups: {},
             excludedValues: {}
         }
     };
@@ -93,12 +96,9 @@ function getChatData() {
     if (!data.overrides) data.overrides = createDefaultChatData().overrides;
     if (!data.overrides.disabledCategories) data.overrides.disabledCategories = [];
     if (!data.overrides.disabledSlots) data.overrides.disabledSlots = [];
+    if (!data.overrides.disabledGroups) data.overrides.disabledGroups = {};
     if (!data.overrides.excludedValues) data.overrides.excludedValues = {};
 
-    // Миграция для чатов, созданных до этого фикса:
-    // Если категории, которые должны быть выключены по умолчанию,
-    // отсутствуют в disabledCategories и нет флага, что пользователь их трогал —
-    // добавляем их один раз.
     if (!data.overridesMigrated) {
         const defaults = getDefaultDisabledCategories();
         for (const catId of defaults) {
@@ -113,29 +113,46 @@ function getChatData() {
 }
 
 // ------------------------------------------------------------
-// Проверки
+// Сбор значений из дерева слота
 // ------------------------------------------------------------
-
-function isSlotEnabled(slot, chatData) {
-    const cat = NPC_CATEGORIES[slot.category];
-    if (cat?.required) return true;
-    if (chatData.overrides.disabledCategories.includes(slot.category)) return false;
-    if (chatData.overrides.disabledSlots.includes(slot.id)) return false;
-    // ВАЖНО: больше нет проверки cat.defaultEnabled — за это отвечает
-    // начальное значение disabledCategories в createDefaultChatData.
-    return true;
-}
-
-function isValueExcluded(slotId, value, chatData) {
-    const excluded = chatData.overrides.excludedValues[slotId] || [];
-    return excluded.includes(value.en);
-}
 
 function matchesSetting(value, setting) {
     const tags = value.tags || [];
     if (tags.length === 0) return true;
     if (setting === 'universal') return true;
     return tags.includes(setting);
+}
+
+function collectValues(node, slotId, chatData, setting, genderEn = null, parentPath = '') {
+    const result = [];
+    const excluded = chatData.overrides.excludedValues[slotId] || [];
+    const disabledGroups = chatData.overrides.disabledGroups[slotId] || [];
+
+    if (node.values) {
+        for (const v of node.values) {
+            if (excluded.includes(v.en)) continue;
+            if (!matchesSetting(v, setting)) continue;
+            result.push(v);
+        }
+    }
+    if (node.groups) {
+        for (const g of node.groups) {
+            // фильтр по полу — только если он задан и у группы есть свой пол
+            if (genderEn && g.gender && g.gender !== genderEn) continue;
+            const childPath = parentPath ? `${parentPath}.${g.id}` : g.id;
+            if (disabledGroups.includes(childPath)) continue;
+            result.push(...collectValues(g, slotId, chatData, setting, genderEn, childPath));
+        }
+    }
+    return result;
+}
+
+function isSlotEnabled(slot, chatData) {
+    const cat = NPC_CATEGORIES[slot.category];
+    if (cat?.required) return true;
+    if (chatData.overrides.disabledCategories.includes(slot.category)) return false;
+    if (chatData.overrides.disabledSlots.includes(slot.id)) return false;
+    return true;
 }
 
 // ------------------------------------------------------------
@@ -148,12 +165,25 @@ function pickRandom(arr) {
 
 function generateNpcFields(chatData, setting) {
     const fields = {};
+
+    // Шаг 1: пол первым (для автолинковки имён)
+    let genderEn = null;
+    const genderSlot = NPC_LIBRARY.find(s => s.id === 'gender');
+    if (genderSlot && isSlotEnabled(genderSlot, chatData)) {
+        const values = collectValues(genderSlot, genderSlot.id, chatData, setting);
+        if (values.length) {
+            const g = pickRandom(values);
+            fields.gender = g;
+            genderEn = g.en;
+        }
+    }
+
+    // Шаг 2: остальные слоты
     for (const slot of NPC_LIBRARY) {
+        if (slot.id === 'gender') continue;
         if (!isSlotEnabled(slot, chatData)) continue;
 
-        const available = slot.values.filter(v =>
-            matchesSetting(v, setting) && !isValueExcluded(slot.id, v, chatData)
-        );
+        const available = collectValues(slot, slot.id, chatData, setting, genderEn);
         if (!available.length) continue;
 
         if (slot.multiple) {
@@ -170,6 +200,7 @@ function generateNpcFields(chatData, setting) {
             fields[slot.id] = pickRandom(available);
         }
     }
+
     return fields;
 }
 
@@ -255,6 +286,63 @@ function escapeHtml(s) {
     }[c]));
 }
 
+function toggleInArray(arr, val, on) {
+    const i = arr.indexOf(val);
+    if (on) {
+        if (i < 0) arr.push(val);
+    } else {
+        if (i >= 0) arr.splice(i, 1);
+    }
+}
+
+// ------------------------------------------------------------
+// Рекурсивный рендер дерева слота
+// ------------------------------------------------------------
+
+function renderTreeNode(slot, node, chatData, parentPath) {
+    let html = '';
+
+    // Значения на этом уровне
+    if (node.values && node.values.length) {
+        const excluded = chatData.overrides.excludedValues[slot.id] || [];
+        html += node.values.map(v => {
+            const isExcluded = excluded.includes(v.en);
+            return `
+                <label class="npc-gen-value-label">
+                    <input type="checkbox" class="npc-gen-checkbox-sm npc-value-cb" data-slot="${slot.id}" data-value="${escapeHtml(v.en)}" ${isExcluded ? '' : 'checked'}>
+                    <span>${escapeHtml(v.ru)}</span>
+                </label>
+            `;
+        }).join('');
+    }
+
+    // Вложенные группы
+    if (node.groups && node.groups.length) {
+        const disabledGroups = chatData.overrides.disabledGroups[slot.id] || [];
+        html += node.groups.map(g => {
+            const childPath = parentPath ? `${parentPath}.${g.id}` : g.id;
+            const groupKey = `${slot.id}::${childPath}`;
+            const isDisabled = disabledGroups.includes(childPath);
+            const isOpen = settings.openGroups.includes(groupKey) ? ' open' : '';
+
+            return `
+                <div class="npc-gen-subgroup${isOpen}" data-slot="${slot.id}" data-path="${childPath}">
+                    <div class="npc-gen-subgroup-header">
+                        <input type="checkbox" class="npc-gen-checkbox-sm npc-subgroup-cb" data-slot="${slot.id}" data-path="${childPath}" ${isDisabled ? '' : 'checked'}>
+                        <span class="npc-gen-toggle-icon npc-gen-subgroup-toggle">▸</span>
+                        <span class="npc-gen-subgroup-name">${escapeHtml(g.label.ru)}</span>
+                    </div>
+                    <div class="npc-gen-subgroup-body">
+                        ${renderTreeNode(slot, g, chatData, childPath)}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    return html;
+}
+
 // ------------------------------------------------------------
 // Рендер дерева библиотеки
 // ------------------------------------------------------------
@@ -283,29 +371,17 @@ function renderCategoryTree(chatData) {
                 <div class="npc-gen-cat-body">
                     ${slots.map(slot => {
                         const slotDisabled = chatData.overrides.disabledSlots.includes(slot.id);
-                        const slotChecked = !slotDisabled;
-                        const excluded = chatData.overrides.excludedValues[slot.id] || [];
                         const slotOpen = settings.openSlots.includes(slot.id) ? ' open' : '';
-
-                        const valuesHtml = slot.values.map(v => {
-                            const isExcluded = excluded.includes(v.en);
-                            return `
-                                <label class="npc-gen-value-label">
-                                    <input type="checkbox" class="npc-gen-checkbox-sm npc-value-cb" data-slot="${slot.id}" data-value="${escapeHtml(v.en)}" ${isExcluded ? '' : 'checked'}>
-                                    <span>${escapeHtml(v.ru)}</span>
-                                </label>
-                            `;
-                        }).join('');
 
                         return `
                             <div class="npc-gen-slot${slotOpen}" data-slot="${slot.id}">
                                 <div class="npc-gen-slot-header">
-                                    <input type="checkbox" class="npc-gen-checkbox-sm npc-slot-cb" data-slot="${slot.id}" ${slotChecked ? 'checked' : ''}>
+                                    <input type="checkbox" class="npc-gen-checkbox-sm npc-slot-cb" data-slot="${slot.id}" ${slotDisabled ? '' : 'checked'}>
                                     <span class="npc-gen-toggle-icon npc-gen-slot-toggle">▸</span>
                                     <span class="npc-gen-slot-name">${escapeHtml(slot.label.ru)}</span>
                                 </div>
                                 <div class="npc-gen-slot-values">
-                                    ${valuesHtml}
+                                    ${renderTreeNode(slot, slot, chatData, '')}
                                 </div>
                             </div>
                         `;
@@ -441,19 +517,6 @@ function renderUI() {
 }
 
 // ------------------------------------------------------------
-// Хелперы для UI-состояния
-// ------------------------------------------------------------
-
-function toggleInArray(arr, val, on) {
-    const i = arr.indexOf(val);
-    if (on) {
-        if (i < 0) arr.push(val);
-    } else {
-        if (i >= 0) arr.splice(i, 1);
-    }
-}
-
-// ------------------------------------------------------------
 // Обработчики
 // ------------------------------------------------------------
 
@@ -479,6 +542,7 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
+    // Раскрытие категории
     $(document).off('click', '.npc-gen-cat-header').on('click', '.npc-gen-cat-header', function(e) {
         if ($(e.target).is('input[type="checkbox"]')) return;
         const $cat = $(this).closest('.npc-gen-category');
@@ -488,6 +552,7 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
+    // Раскрытие слота
     $(document).off('click', '.npc-gen-slot-header').on('click', '.npc-gen-slot-header', function(e) {
         if ($(e.target).is('input[type="checkbox"]')) return;
         const $slot = $(this).closest('.npc-gen-slot');
@@ -497,6 +562,19 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
+    // Раскрытие вложенной группы
+    $(document).off('click', '.npc-gen-subgroup-header').on('click', '.npc-gen-subgroup-header', function(e) {
+        if ($(e.target).is('input[type="checkbox"]')) return;
+        const $group = $(this).closest('.npc-gen-subgroup');
+        const slotId = $group.data('slot');
+        const path = $group.data('path');
+        const key = `${slotId}::${path}`;
+        $group.toggleClass('open');
+        toggleInArray(settings.openGroups, key, $group.hasClass('open'));
+        saveSettingsDebounced();
+    });
+
+    // Чекбокс категории
     $(document).off('change', '.npc-cat-cb').on('change', '.npc-cat-cb', function() {
         const catId = $(this).data('cat');
         const chatData = getChatData();
@@ -505,6 +583,7 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
+    // Чекбокс слота
     $(document).off('change', '.npc-slot-cb').on('change', '.npc-slot-cb', function() {
         const slotId = $(this).data('slot');
         const chatData = getChatData();
@@ -513,6 +592,20 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
+    // Чекбокс вложенной группы
+    $(document).off('change', '.npc-subgroup-cb').on('change', '.npc-subgroup-cb', function() {
+        const slotId = $(this).data('slot');
+        const path = $(this).data('path');
+        const chatData = getChatData();
+        if (!chatData) return;
+        if (!chatData.overrides.disabledGroups[slotId]) {
+            chatData.overrides.disabledGroups[slotId] = [];
+        }
+        toggleInArray(chatData.overrides.disabledGroups[slotId], path, !this.checked);
+        saveSettingsDebounced();
+    });
+
+    // Чекбокс конкретного значения
     $(document).off('change', '.npc-value-cb').on('change', '.npc-value-cb', function() {
         const slotId = $(this).data('slot');
         const valueEn = $(this).data('value');
@@ -525,6 +618,7 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
+    // Генерация
     $(document).off('click', '#npc-gen-generate').on('click', '#npc-gen-generate', function() {
         const chatData = getChatData();
         if (!chatData) return;
@@ -534,6 +628,7 @@ function bindUiEvents() {
         renderUI();
     });
 
+    // Чекбокс "в промпт"
     $(document).off('change', '.npc-inprompt-cb').on('change', '.npc-inprompt-cb', function() {
         const id = $(this).data('id');
         const chatData = getChatData();
@@ -547,6 +642,7 @@ function bindUiEvents() {
         }
     });
 
+    // Раскрытие NPC
     $(document).off('click', '.npc-gen-item-header').on('click', '.npc-gen-item-header', function(e) {
         if ($(e.target).is('input[type="checkbox"]') || $(e.target).is('button')) return;
         const $item = $(this).closest('.npc-gen-item');
@@ -556,6 +652,7 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
+    // Удаление
     $(document).off('click', '.npc-delete-btn').on('click', '.npc-delete-btn', function(e) {
         e.stopPropagation();
         const id = $(this).data('id');
@@ -571,12 +668,14 @@ function bindUiEvents() {
         }
     });
 
+    // Чекбокс инъекции
     $(document).off('change', '#npc-gen-inject').on('change', '#npc-gen-inject', function() {
         settings.injectToPrompt = $(this).is(':checked');
         saveSettingsDebounced();
         updatePrompt();
     });
 
+    // Копирование
     $(document).off('click', '#npc-gen-copy').on('click', '#npc-gen-copy', function() {
         const chatData = getChatData();
         if (!chatData) return;
@@ -588,6 +687,7 @@ function bindUiEvents() {
         });
     });
 
+    // Очистка
     $(document).off('click', '#npc-gen-clear').on('click', '#npc-gen-clear', function() {
         if (!confirm('Удалить всех NPC в этом чате?')) return;
         const chatData = getChatData();
@@ -615,6 +715,7 @@ function loadSettings() {
     if (!settings.chatNpcData) settings.chatNpcData = {};
     if (!Array.isArray(settings.openCategories)) settings.openCategories = [];
     if (!Array.isArray(settings.openSlots)) settings.openSlots = [];
+    if (!Array.isArray(settings.openGroups)) settings.openGroups = [];
     if (!Array.isArray(settings.openNpcs)) settings.openNpcs = [];
 }
 
