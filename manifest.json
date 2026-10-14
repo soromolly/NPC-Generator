@@ -1,0 +1,11 @@
+{
+    "display_name": "NPC Generator",
+    "loading_order": 15,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "soromolly",
+    "version": "1.0.0",
+    "description": "Генератор NPC с настраиваемой библиотекой характеристик. Инъекция в промпт опциональна и видна пользователю."
+}
