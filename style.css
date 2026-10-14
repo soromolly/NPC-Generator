@@ -7,7 +7,7 @@
     margin-bottom: 10px;
 }
 
-/* ---------- Заголовок / сворачивание ---------- */
+/* ---------- Заголовок ---------- */
 
 .npc-gen-drawer-toggle {
     display: flex;
@@ -54,7 +54,7 @@
 
 .npc-gen-content.open {
     display: block;
-    max-height: 4000px;
+    max-height: 6000px;
     padding: 14px;
 }
 
@@ -87,9 +87,10 @@
     height: 12px;
     margin: 0;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
-/* ---------- Основное тело ---------- */
+/* ---------- Тело ---------- */
 
 .npc-gen-body {
     opacity: 1;
@@ -124,7 +125,7 @@
     width: 55%;
 }
 
-/* ---------- Библиотека (details) ---------- */
+/* ---------- Библиотека ---------- */
 
 .npc-gen-library {
     margin-bottom: 12px;
@@ -139,6 +140,7 @@
     font-weight: 600;
     color: #a78bfa;
     font-size: 0.9em;
+    user-select: none;
 }
 
 .npc-gen-library-inner {
@@ -148,45 +150,107 @@
 /* ---------- Дерево категорий ---------- */
 
 .npc-gen-category {
-    margin-bottom: 6px;
+    margin-bottom: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.1);
 }
 
-.npc-gen-cat-label {
+.npc-gen-cat-header {
     display: flex;
     align-items: center;
     gap: 6px;
+    padding: 6px 8px;
     cursor: pointer;
-}
-
-.npc-gen-cat-label.required {
-    cursor: default;
+    user-select: none;
 }
 
 .npc-gen-cat-name {
     font-weight: 600;
     color: #a78bfa;
+    font-size: 0.9em;
 }
 
 .npc-gen-cat-required {
-    font-size: 0.75em;
+    font-size: 0.72em;
     opacity: 0.5;
+    margin-left: 4px;
 }
 
-.npc-gen-slots {
-    margin-left: 22px;
-    margin-top: 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
+.npc-gen-cat-body {
+    display: none;
+    padding: 4px 8px 8px 26px;
 }
 
-.npc-gen-slot-label {
+.npc-gen-category.open .npc-gen-cat-body {
+    display: block;
+}
+
+/* ---------- Слоты ---------- */
+
+.npc-gen-slot {
+    margin-bottom: 3px;
+}
+
+.npc-gen-slot-header {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 0.88em;
-    opacity: 0.85;
+    padding: 3px 4px;
     cursor: pointer;
+    font-size: 0.88em;
+    opacity: 0.9;
+    user-select: none;
+}
+
+.npc-gen-slot-name {
+    font-weight: 500;
+}
+
+.npc-gen-slot-values {
+    display: none;
+    padding: 3px 0 5px 26px;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.npc-gen-slot.open .npc-gen-slot-values {
+    display: flex;
+}
+
+/* ---------- Значения ---------- */
+
+.npc-gen-value-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82em;
+    opacity: 0.8;
+    cursor: pointer;
+    padding: 1px 0;
+}
+
+.npc-gen-value-label:hover {
+    opacity: 1;
+}
+
+/* ---------- Общий значок стрелки ---------- */
+
+.npc-gen-toggle-icon {
+    display: inline-block;
+    transition: transform 0.15s;
+    font-size: 10px;
+    opacity: 0.55;
+    user-select: none;
+    width: 12px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.npc-gen-category.open .npc-gen-cat-toggle,
+.npc-gen-slot.open .npc-gen-slot-toggle,
+.npc-gen-item.open .npc-gen-item-toggle {
+    transform: rotate(90deg);
 }
 
 /* ---------- Кнопки ---------- */
@@ -234,7 +298,7 @@
 }
 
 .npc-gen-list {
-    max-height: 260px;
+    max-height: 400px;
     overflow-y: auto;
 }
 
@@ -245,19 +309,45 @@
 }
 
 .npc-gen-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 4px;
     margin-bottom: 4px;
 }
 
+.npc-gen-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
 .npc-gen-item-label {
     flex: 1;
     font-size: 0.88em;
+}
+
+.npc-gen-item-body {
+    display: none;
+    padding: 6px 10px 10px 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.82em;
+}
+
+.npc-gen-item.open .npc-gen-item-body {
+    display: block;
+}
+
+.npc-gen-field {
+    margin-bottom: 3px;
+    line-height: 1.4;
+}
+
+.npc-gen-field-label {
+    color: #a78bfa;
+    opacity: 0.85;
 }
 
 .npc-gen-delete-btn {
@@ -269,6 +359,7 @@
     border-radius: 4px;
     color: #fca5a5;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .npc-gen-delete-btn:hover {
@@ -297,6 +388,14 @@
     font-size: 0.9em;
     color: #a78bfa;
     margin-bottom: 6px;
+}
+
+.npc-gen-token-counter {
+    font-weight: 400;
+    font-size: 0.8em;
+    opacity: 0.6;
+    margin-left: 8px;
+    font-family: monospace;
 }
 
 .npc-gen-preview {
