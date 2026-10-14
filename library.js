@@ -5,14 +5,19 @@
 // Категории — верхний уровень тумблеров.
 // Слоты — конкретные характеристики внутри категорий.
 //
-// Теги значений:
-//   'universal'  — подходит для любой эпохи (по умолчанию, если тегов нет)
-//   'medieval'   — только средневековье
-//   'modern'     — только современность
-//   'cyberpunk'  — только киберпанк
-//   'space'      — только космос
+// Слот может содержать:
+//   values: [ ... ]         — плоский список значений
+//   groups: [ ... ]         — дерево групп (рекурсивно)
 //
-// Значение с тегом эпохи НЕ должно содержать 'universal' — они взаимоисключающие.
+// Группа:
+//   id, label { ru, en }
+//   values: [ ... ]  и/или  groups: [ ... ]
+//   gender: 'male' | 'female'   — опционально, для фильтрации имён
+//
+// Значение:
+//   { ru, en, tags: [...] }
+//   tags: 'medieval', 'modern', 'cyberpunk', 'space'
+//   Значения без тегов = универсальные.
 
 export const NPC_CATEGORIES = {
     core: {
@@ -48,24 +53,87 @@ export const NPC_CATEGORIES = {
 export const NPC_LIBRARY = [
     // ============ CORE ============
     {
+        id: 'gender',
+        category: 'core',
+        label: { ru: 'Пол', en: 'Gender' },
+        values: [
+            { ru: 'мужской', en: 'male' },
+            { ru: 'женский', en: 'female' }
+        ]
+    },
+    {
         id: 'name_given',
         category: 'core',
         label: { ru: 'Имя', en: 'Given name' },
-        values: [
-            { ru: 'Марта', en: 'Martha' },
-            { ru: 'Йорн', en: 'Jorn' },
-            { ru: 'Кассия', en: 'Cassia' },
-            { ru: 'Ральф', en: 'Ralph' },
-            { ru: 'Нэйра', en: 'Naira' },
-            { ru: 'Теодор', en: 'Theodore' },
-            { ru: 'Ада', en: 'Ada' },
-            { ru: 'Сильван', en: 'Sylvan' },
-            { ru: 'Ирис', en: 'Iris' },
-            { ru: 'Хаким', en: 'Hakim' },
-            { ru: 'Вейл', en: 'Vale' },
-            { ru: 'Ора', en: 'Ora' },
-            { ru: 'Каин', en: 'Cain' },
-            { ru: 'Лис', en: 'Lis' }
+        groups: [
+            {
+                id: 'ru',
+                label: { ru: 'Русские', en: 'Russian' },
+                groups: [
+                    {
+                        id: 'male',
+                        label: { ru: 'Мужские', en: 'Male' },
+                        gender: 'male',
+                        values: [
+                            { ru: 'Иван', en: 'Ivan' },
+                            { ru: 'Дмитрий', en: 'Dmitri' },
+                            { ru: 'Сергей', en: 'Sergei' },
+                            { ru: 'Александр', en: 'Alexander' },
+                            { ru: 'Николай', en: 'Nikolai' },
+                            { ru: 'Михаил', en: 'Mikhail' },
+                            { ru: 'Алексей', en: 'Alexei' },
+                            { ru: 'Владимир', en: 'Vladimir' },
+                            { ru: 'Андрей', en: 'Andrei' },
+                            { ru: 'Егор', en: 'Egor' },
+                            { ru: 'Артём', en: 'Artyom' },
+                            { ru: 'Павел', en: 'Pavel' },
+                            { ru: 'Роман', en: 'Roman' },
+                            { ru: 'Кирилл', en: 'Kirill' },
+                            { ru: 'Даниил', en: 'Daniil' },
+                            { ru: 'Максим', en: 'Maxim' },
+                            { ru: 'Григорий', en: 'Grigori' },
+                            { ru: 'Ярослав', en: 'Yaroslav' },
+                            { ru: 'Борис', en: 'Boris' },
+                            { ru: 'Влад', en: 'Vlad' },
+                            { ru: 'Фёдор', en: 'Fyodor' },
+                            { ru: 'Игнат', en: 'Ignat' },
+                            { ru: 'Матвей', en: 'Matvei' },
+                            { ru: 'Тимофей', en: 'Timofei' }
+                        ]
+                    },
+                    {
+                        id: 'female',
+                        label: { ru: 'Женские', en: 'Female' },
+                        gender: 'female',
+                        values: [
+                            { ru: 'Анна', en: 'Anna' },
+                            { ru: 'Мария', en: 'Maria' },
+                            { ru: 'Екатерина', en: 'Ekaterina' },
+                            { ru: 'Ольга', en: 'Olga' },
+                            { ru: 'Татьяна', en: 'Tatiana' },
+                            { ru: 'Наталья', en: 'Natalia' },
+                            { ru: 'Ирина', en: 'Irina' },
+                            { ru: 'Светлана', en: 'Svetlana' },
+                            { ru: 'Юлия', en: 'Yulia' },
+                            { ru: 'Дарья', en: 'Daria' },
+                            { ru: 'Анастасия', en: 'Anastasia' },
+                            { ru: 'Елена', en: 'Elena' },
+                            { ru: 'Ксения', en: 'Ksenia' },
+                            { ru: 'Полина', en: 'Polina' },
+                            { ru: 'Вера', en: 'Vera' },
+                            { ru: 'Надежда', en: 'Nadezhda' },
+                            { ru: 'Любовь', en: 'Lyubov' },
+                            { ru: 'Софья', en: 'Sofia' },
+                            { ru: 'Алиса', en: 'Alisa' },
+                            { ru: 'Варвара', en: 'Varvara' },
+                            { ru: 'Марина', en: 'Marina' },
+                            { ru: 'Галина', en: 'Galina' },
+                            { ru: 'Лариса', en: 'Larisa' },
+                            { ru: 'Нина', en: 'Nina' }
+                        ]
+                    }
+                ]
+            }
         ]
     },
     {
