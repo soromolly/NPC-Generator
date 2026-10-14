@@ -236,7 +236,7 @@ function renderUI() {
 
     const html = `
         <div class="npc-gen-drawer-toggle${isMenuCollapsed ? '' : ' open'}">
-            <span class="npc-gen-title">🧬 NPC Generator</span>
+            <span class="npc-gen-title">🎭 NPC Generator</span>
             <i class="npc-gen-arrow fa-solid ${isMenuCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}"></i>
         </div>
 
@@ -315,21 +315,11 @@ function renderUI() {
 function bindUiEvents() {
     $(document).off('click', '.npc-gen-drawer-toggle').on('click', '.npc-gen-drawer-toggle', function() {
         isMenuCollapsed = !isMenuCollapsed;
-        const $content = $('#npc-gen-content');
-        const $toggle = $(this);
-        if (isMenuCollapsed) {
-            $content.slideUp(150, () => {
-                $content.removeClass('open');
-                $toggle.removeClass('open');
-            });
-            $('.npc-gen-arrow').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-        } else {
-            $content.slideDown(150, () => {
-                $content.addClass('open');
-                $toggle.addClass('open');
-            });
-            $('.npc-gen-arrow').removeClass('fa-chevron-down').addClass('fa-chevron-up');
-        }
+        $('.npc-gen-content').toggleClass('open', !isMenuCollapsed);
+        $(this).toggleClass('open', !isMenuCollapsed);
+        $(this).find('.npc-gen-arrow')
+            .toggleClass('fa-chevron-down', isMenuCollapsed)
+            .toggleClass('fa-chevron-up', !isMenuCollapsed);
     });
 
     $(document).off('change', '#npc-gen-enabled').on('change', '#npc-gen-enabled', function() {
