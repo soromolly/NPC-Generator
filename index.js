@@ -15,7 +15,6 @@ const DEFAULT_SETTINGS = {
     setting: 'universal',
     injectToPrompt: false,
     chatNpcData: {},
-    // UI-состояние (сохраняется между перезагрузками)
     openCategories: [],
     openSlots: [],
     openNpcs: []
@@ -66,13 +65,19 @@ function getCurrentChatId() {
     return null;
 }
 
+function getDefaultDisabledCategories() {
+    return Object.entries(NPC_CATEGORIES)
+        .filter(([_, cat]) => cat.defaultEnabled === false)
+        .map(([id]) => id);
+}
+
 function createDefaultChatData() {
     return {
         npcs: [],
         overrides: {
-            disabledCategories: [],
+            disabledCategories: getDefaultDisabledCategories(),
             disabledSlots: [],
-            excludedValues: {}   // { slotId: ['english_text', ...] }
+            excludedValues: {}
         }
     };
 }
@@ -89,6 +94,21 @@ function getChatData() {
     if (!data.overrides.disabledCategories) data.overrides.disabledCategories = [];
     if (!data.overrides.disabledSlots) data.overrides.disabledSlots = [];
     if (!data.overrides.excludedValues) data.overrides.excludedValues = {};
+
+    // Миграция для чатов, созданных до этого фикса:
+    // Если категории, которые должны быть выключены по умолчанию,
+    // отсутствуют в disabledCategories и нет флага, что пользователь их трогал —
+    // добавляем их один раз.
+    if (!data.overridesMigrated) {
+        const defaults = getDefaultDisabledCategories();
+        for (const catId of defaults) {
+            if (!data.overrides.disabledCategories.includes(catId)) {
+                data.overrides.disabledCategories.push(catId);
+            }
+        }
+        data.overridesMigrated = true;
+    }
+
     return data;
 }
 
@@ -101,7 +121,8 @@ function isSlotEnabled(slot, chatData) {
     if (cat?.required) return true;
     if (chatData.overrides.disabledCategories.includes(slot.category)) return false;
     if (chatData.overrides.disabledSlots.includes(slot.id)) return false;
-    if (cat?.defaultEnabled === false) return false;
+    // ВАЖНО: больше нет проверки cat.defaultEnabled — за это отвечает
+    // начальное значение disabledCategories в createDefaultChatData.
     return true;
 }
 
@@ -437,7 +458,6 @@ function toggleInArray(arr, val, on) {
 // ------------------------------------------------------------
 
 function bindUiEvents() {
-    // Главный тоггл
     $(document).off('click', '.npc-gen-drawer-toggle').on('click', '.npc-gen-drawer-toggle', function() {
         isMenuCollapsed = !isMenuCollapsed;
         $('.npc-gen-content').toggleClass('open', !isMenuCollapsed);
@@ -459,7 +479,6 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
-    // Раскрытие категории (клик по заголовку, кроме чекбокса)
     $(document).off('click', '.npc-gen-cat-header').on('click', '.npc-gen-cat-header', function(e) {
         if ($(e.target).is('input[type="checkbox"]')) return;
         const $cat = $(this).closest('.npc-gen-category');
@@ -469,7 +488,6 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
-    // Раскрытие слота
     $(document).off('click', '.npc-gen-slot-header').on('click', '.npc-gen-slot-header', function(e) {
         if ($(e.target).is('input[type="checkbox"]')) return;
         const $slot = $(this).closest('.npc-gen-slot');
@@ -479,7 +497,6 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
-    // Чекбокс категории
     $(document).off('change', '.npc-cat-cb').on('change', '.npc-cat-cb', function() {
         const catId = $(this).data('cat');
         const chatData = getChatData();
@@ -488,7 +505,6 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
-    // Чекбокс слота
     $(document).off('change', '.npc-slot-cb').on('change', '.npc-slot-cb', function() {
         const slotId = $(this).data('slot');
         const chatData = getChatData();
@@ -497,7 +513,6 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
-    // Чекбокс конкретного значения
     $(document).off('change', '.npc-value-cb').on('change', '.npc-value-cb', function() {
         const slotId = $(this).data('slot');
         const valueEn = $(this).data('value');
@@ -510,7 +525,6 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
-    // Генерация
     $(document).off('click', '#npc-gen-generate').on('click', '#npc-gen-generate', function() {
         const chatData = getChatData();
         if (!chatData) return;
@@ -520,7 +534,6 @@ function bindUiEvents() {
         renderUI();
     });
 
-    // Чекбокс "в промпт"
     $(document).off('change', '.npc-inprompt-cb').on('change', '.npc-inprompt-cb', function() {
         const id = $(this).data('id');
         const chatData = getChatData();
@@ -534,7 +547,6 @@ function bindUiEvents() {
         }
     });
 
-    // Раскрытие NPC
     $(document).off('click', '.npc-gen-item-header').on('click', '.npc-gen-item-header', function(e) {
         if ($(e.target).is('input[type="checkbox"]') || $(e.target).is('button')) return;
         const $item = $(this).closest('.npc-gen-item');
@@ -544,7 +556,6 @@ function bindUiEvents() {
         saveSettingsDebounced();
     });
 
-    // Удаление
     $(document).off('click', '.npc-delete-btn').on('click', '.npc-delete-btn', function(e) {
         e.stopPropagation();
         const id = $(this).data('id');
@@ -560,14 +571,12 @@ function bindUiEvents() {
         }
     });
 
-    // Чекбокс инъекции
     $(document).off('change', '#npc-gen-inject').on('change', '#npc-gen-inject', function() {
         settings.injectToPrompt = $(this).is(':checked');
         saveSettingsDebounced();
         updatePrompt();
     });
 
-    // Копирование
     $(document).off('click', '#npc-gen-copy').on('click', '#npc-gen-copy', function() {
         const chatData = getChatData();
         if (!chatData) return;
@@ -579,7 +588,6 @@ function bindUiEvents() {
         });
     });
 
-    // Очистка
     $(document).off('click', '#npc-gen-clear').on('click', '#npc-gen-clear', function() {
         if (!confirm('Удалить всех NPC в этом чате?')) return;
         const chatData = getChatData();
@@ -635,7 +643,6 @@ jQuery(async () => {
         }
     }
 
-    // Fallback: если события не сработали
     let attempts = 0;
     const interval = setInterval(() => {
         attempts++;
